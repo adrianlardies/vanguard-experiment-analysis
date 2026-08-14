@@ -2,17 +2,21 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from pathlib import Path
 from scipy.stats import skew, kurtosis
 from scipy.stats import chi2_contingency
 from scipy import stats
 from statsmodels.stats.proportion import proportions_ztest
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+RAW_DATA_DIR = PROJECT_ROOT / 'data' / 'raw'
+
 # Función para cargar los datos desde archivos CSV
 def cargar_datos():
-    df_final_demo = pd.read_csv('../data/raw/df_final_demo.txt')
-    df_final_experiment_clients = pd.read_csv('../data/raw/df_final_experiment_clients.txt')
-    df_pt_1 = pd.read_csv('../data/raw/df_pt_1.txt')
-    df_pt_2 = pd.read_csv('../data/raw/df_pt_2.txt')
+    df_final_demo = pd.read_csv(RAW_DATA_DIR / 'df_final_demo.txt')
+    df_final_experiment_clients = pd.read_csv(RAW_DATA_DIR / 'df_final_experiment_clients.txt')
+    df_pt_1 = pd.read_csv(RAW_DATA_DIR / 'df_pt_1.txt')
+    df_pt_2 = pd.read_csv(RAW_DATA_DIR / 'df_pt_2.txt')
     
     # Concatenar df_pt_1 y df_pt_2
     df_pt = pd.concat([df_pt_1, df_pt_2], ignore_index=True)
@@ -504,3 +508,32 @@ def chi_square_and_cramers_v(df):
     cramers_v = np.sqrt(chi2 / (n * (min(contingency_table.shape) - 1)))
 
     return chi2, p, cramers_v
+
+
+def main():
+    """Rebuild the core analysis dataset in memory from the raw files."""
+    df_final_demo, df_final_experiment_clients, df_pt = cargar_datos()
+    df_final_demo, df_final_experiment_clients, df_pt = limpiar_datos(
+        df_final_demo, df_final_experiment_clients, df_pt
+    )
+    df_final_demo, df_final_experiment_clients, df_pt = filtrar_por_clientes_comunes(
+        df_final_demo, df_final_experiment_clients, df_pt
+    )
+    df_final_demo, df_pt = convertir_tipos_datos(df_final_demo, df_pt)
+    df_final, df_pt = renombrar_columnas_y_fusionar(
+        df_final_experiment_clients, df_final_demo, df_pt
+    )
+    metrics = calcular_medias_percentiles(df_final)
+    df_final = clasificar_clientes(df_final, metrics[:4], metrics[4:])
+    df_pt = analizar_pasos(df_pt)
+    df_vanguard = construir_df_vanguard(df_final, df_pt)
+
+    print(
+        f"Rebuilt core dataset in memory: {len(df_vanguard):,} rows, "
+        f"{len(df_vanguard.columns)} columns."
+    )
+    print("No files were written.")
+
+
+if __name__ == '__main__':
+    main()

@@ -4,12 +4,17 @@ import plotly.express as px
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 from scipy import stats
 from scipy.stats import skew, kurtosis
 from statsmodels.stats.proportion import proportions_ztest
 from scipy.stats import chi2_contingency
 
-st.markdown('# **Análisis A/B Web Vanguard** 📊')
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CLEANED_DATA_PATH = PROJECT_ROOT / 'data' / 'cleaned' / 'vanguard.csv'
+
+st.markdown('# **Historical Vanguard A/B Test Analysis** 📊')
+st.caption('Historical portfolio project; no employment or client relationship with Vanguard is implied.')
 
 st.sidebar.title('Opciones de Análisis')
 
@@ -21,7 +26,7 @@ paso_seleccionado = st.sidebar.selectbox('Seleccione el paso a analizar', ['Todo
 
 @st.cache_data
 def cargar_datos():
-    df = pd.read_csv('data/cleaned/vanguard.csv', index_col=None)
+    df = pd.read_csv(CLEANED_DATA_PATH, index_col=None)
     return df
 
 df_vanguard = cargar_datos()
@@ -61,7 +66,7 @@ def plot_completion_rates(completion_rate_true, completion_rate_false):
 
     completion_rates.plot(kind='bar', figsize=(10, 6), color=['#4CAF50', '#FF5733'])
 
-    plt.title('Tasa de Finalización y No Finalización por Grupo (Test vs Control)')
+    plt.title('Tasa de Secuencia Lineal y No Lineal por Grupo (Test vs Control)')
     plt.xlabel('Grupo')
     plt.ylabel('Proporción de Clientes')
     plt.xticks(rotation=0)
@@ -93,9 +98,9 @@ def plot_avg_time_in_steps(df, step_order):
             kind='line', marker=marker, linestyle=linestyle, figsize=(12, 6), ax=plt.gca(), label=label
         )
 
-    plt.title('Tiempo Promedio en Cada Paso: Test vs Control (Lineal vs No Lineal)')
+    plt.title('Valor Acumulado Promedio por Paso: Test vs Control (Lineal vs No Lineal)')
     plt.xlabel('Paso')
-    plt.ylabel('Tiempo Promedio (segundos)')
+    plt.ylabel('Valor Acumulado Promedio (segundos)')
     plt.grid(True)
     plt.legend(title='Condición (Test/Control - Lineal/No Lineal)', loc='upper left')
     plt.show()
@@ -155,9 +160,9 @@ def calculate_and_plot_time_per_step(df, step_order):
     df_time_per_step = df_time_per_step[step_order]
 
     df_time_per_step.T.plot(kind='line', marker='o', figsize=(10, 6))
-    plt.title('Tiempo Promedio por Paso: Test vs Control')
+    plt.title('Valor Acumulado Promedio por Paso: Test vs Control')
     plt.xlabel('Paso')
-    plt.ylabel('Tiempo Promedio')
+    plt.ylabel('Valor Acumulado Promedio')
     plt.grid(True)
     plt.show()
 
@@ -183,8 +188,8 @@ def z_test_completion_rates(df):
     n_test = df[df['variation'] == 'Test']['client_id'].nunique()  # Número de usuarios en Test
     n_control = df[df['variation'] == 'Control']['client_id'].nunique()  # Número de usuarios en Control
 
-    completed_test = df[(df['variation'] == 'Test') & (df['lineal'] == True)]['client_id'].nunique()  # Usuarios que completaron el proceso en Test
-    completed_control = df[(df['variation'] == 'Control') & (df['lineal'] == True)]['client_id'].nunique()  # Usuarios que completaron el proceso en Control
+    completed_test = df[(df['variation'] == 'Test') & (df['lineal'] == True)]['client_id'].nunique()  # Clientes Test con alguna visita lineal
+    completed_control = df[(df['variation'] == 'Control') & (df['lineal'] == True)]['client_id'].nunique()  # Clientes Control con alguna visita lineal
 
     p_test = completed_test / n_test
     p_control = completed_control / n_control
@@ -239,7 +244,7 @@ df_vanguard = cargar_datos()
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "Introducción",
-    "Tasa de Finalización", 
+    "Tasa de Secuencia Lineal",
     "Tiempos por Paso", 
     "Tasa de Errores", 
     "Estadísticas de Tiempos", 
@@ -251,7 +256,7 @@ with tab1:
     st.markdown('''
     ## Introducción
     
-    En este proyecto, llevamos a cabo un **análisis A/B** para evaluar el rendimiento comparativo entre la **nueva versión** de la web de Vanguard y su **versión anterior**. Este estudio nos permitirá medir el impacto de las mejoras introducidas en la nueva versión en la experiencia de usuario, utilizando métricas clave que nos ayuden a identificar si las modificaciones han resultado beneficiosas.
+    Este proyecto histórico compara el comportamiento registrado en un experimento A/B entre una **nueva versión** de una experiencia digital (Test) y su **versión anterior** (Control). El análisis describe recorridos, tiempos y errores observados; no implica una relación laboral o de cliente con Vanguard.
     ''')
                 
     st.divider()    
@@ -259,44 +264,44 @@ with tab1:
     st.markdown('''
     El análisis se centra en tres métricas fundamentales:
 
-    - **Tasa de finalización**: Analiza el porcentaje de usuarios que logran completar el proceso de navegación de principio a fin.
-    - **Tiempos por paso**: Evalúa el tiempo promedio que los usuarios emplean en cada etapa del proceso, lo que nos proporciona información sobre posibles cuellos de botella o mejoras de eficiencia.
-    - **Tasa de errores**: Mide la frecuencia con la que los usuarios cometen errores, como retroceder en pasos o repetir acciones, para detectar posibles dificultades en la interacción con la nueva interfaz.
+    - **Tasa de secuencia lineal**: Analiza el porcentaje de clientes con al menos una visita que cumple la regla histórica de secuencia completa.
+    - **Tiempos registrados por evento**: Compara el tiempo acumulado desde el inicio de la visita en cada etapa del proceso.
+    - **Tasa de errores**: Mide la frecuencia de los eventos que cumplen la regla histórica de error: un retroceso de un paso o más de dos apariciones del mismo paso en una visita.
     ''')
                 
     st.divider()            
 
     st.markdown('''
-    Para asegurar la rigurosidad del estudio, hemos empleado diversas **pruebas estadísticas** con el fin de determinar si las diferencias observadas entre ambas versiones son **estadísticamente significativas**:
+    El análisis histórico emplea diversas **pruebas estadísticas** para comparar las diferencias observadas entre ambas versiones:
 
-    - **Pruebas T-test y Mann-Whitney**: Comparan las medias de tiempo de finalización entre los grupos de usuarios, evaluando si existen diferencias notables en el rendimiento.
+    - **Pruebas T-test y Mann-Whitney**: Comparan los valores de tiempo acumulado registrados por evento entre los grupos.
     - **Pruebas Chi-square y Cramér's V**: Analizan la relación entre variables categóricas, como el tipo de usuario (lineal o no lineal) y la versión de la web utilizada (Test o Control).
-    - **Correlaciones de Pearson y Spearman**: Examina la relación entre variables continuas como la **edad**, el **balance** de los usuarios, su **actividad** (número de logins y llamadas al soporte), y el **número de cuentas** que poseen, para detectar patrones de comportamiento que puedan influir en el rendimiento.
+    - **Correlaciones de Pearson y Spearman**: Describen la relación entre variables continuas como la **edad**, el **balance**, la **actividad** (número de logins y llamadas al soporte) y el **número de cuentas**.
     ''')
 
     st.divider()            
 
     st.markdown('''
-    El objetivo final de este análisis es determinar si la **nueva versión de la web** ofrece una **mejor experiencia de usuario**, basándonos en el comportamiento de los usuarios durante el proceso de navegación y en cómo estos interactúan con la interfaz. A través de este estudio, buscamos obtener insights valiosos que guíen futuras mejoras y optimizaciones en la experiencia digital de Vanguard.
+    El objetivo es comparar los patrones observados entre Test y Control. Las métricas permiten describir diferencias en los logs, pero por sí solas no demuestran una mejora global de la experiencia de usuario.
     ''')
 
 with tab2:
-    st.subheader("Tasas de Finalización")
+    st.subheader("Tasas de Secuencia Lineal")
     
     st.write("""
-    La tasa de finalización mide el porcentaje de usuarios que completaron el proceso de manera lineal. 
+    Esta métrica histórica mide el porcentaje de clientes con al menos una visita clasificada como `lineal=True`.
     El análisis se divide entre:
     
-    - **Lineal=True**: Usuarios que completaron el proceso sin retroceder ni repetir pasos.
-    - **Lineal=False**: Usuarios que retrocedieron o repitieron pasos más de dos veces.
+    - **Lineal=True**: La visita contiene `start → step_1 → step_2 → step_3 → confirm` en ese orden, con cada paso presente una o dos veces y sin otros eventos intercalados.
+    - **Lineal=False**: La visita no satisface esa regla; esto incluye recorridos incompletos, desordenados o con más repeticiones.
     """)
 
     completion_rate_true, completion_rate_false, suma_tasas = calculate_completion_rates(df_filtrado)
 
-    st.write("##### Tasa de finalización (lineal = True)")
+    st.write("##### Tasa de clientes con alguna visita lineal")
     st.write(completion_rate_true)
 
-    st.write("##### Tasa de no finalización (lineal = False)")
+    st.write("##### Tasa de clientes sin visitas lineales")
     st.write(completion_rate_false)
 
     st.write("##### Suma de tasas para cada grupo (debería ser cercana a 1)")
@@ -313,29 +318,29 @@ with tab2:
 
     completion_rates = completion_rates.reset_index()
 
-    fig = px.bar(completion_rates, x='variation', y=['Lineal=True', 'Lineal=False'], barmode='group', title="Tasas de Finalización y No Finalización (Test vs Control - Lineal/No Lineal)")
+    fig = px.bar(completion_rates, x='variation', y=['Lineal=True', 'Lineal=False'], barmode='group', title="Tasas de Secuencia Lineal y No Lineal (Test vs Control)")
     st.plotly_chart(fig)
 
     st.divider()
 
     st.write("""
     #### Insights
-    - En el grupo **Control** (versión antigua de la web), el **46.05%** de los usuarios completaron el proceso de manera lineal, mientras que en el grupo **Test** (nueva versión), la tasa de finalización lineal aumentó ligeramente a **47.46%**. Aunque esta diferencia es pequeña, podría sugerir que la nueva versión facilita ligeramente un proceso más fluido para algunos usuarios.
+    - En el grupo **Control**, el **46.05%** de los clientes tuvo al menos una visita lineal, frente al **47.46%** en **Test**. Esta diferencia descriptiva es pequeña.
     
-    - Sin embargo, el porcentaje de usuarios que **no completaron** el proceso de manera lineal también se mantiene cercano entre los grupos. En el grupo **Control**, el **53.94%** de los usuarios no siguieron una ruta lineal, en comparación con el **52.53%** en el grupo **Test**.
+    - El porcentaje de clientes sin ninguna visita lineal también se mantiene cercano entre los grupos. En **Control** es **53.94%**, frente a **52.53%** en **Test**.
 
-    - Estos resultados sugieren que, aunque la nueva versión de la web presenta una leve mejora en la tasa de finalización lineal, el comportamiento no lineal sigue siendo común en ambas versiones. Esto podría indicar que existen desafíos inherentes en el flujo de navegación que no han sido completamente abordados con las modificaciones de la nueva versión.
+    - La clasificación no lineal sigue siendo común en ambas versiones. La métrica no distingue abandono de otros motivos por los que una visita incumple la regla.
     
-    - Es importante analizar más en detalle qué factores contribuyen a que un porcentaje considerable de usuarios no complete el proceso de manera lineal. Algunas posibles áreas de mejora podrían incluir la claridad en los pasos del proceso, la accesibilidad de la interfaz, o el soporte proporcionado durante el proceso.
+    - Sería necesario un análisis adicional para distinguir recorridos incompletos, retrocesos y repeticiones, sin inferir motivos de usabilidad a partir de los logs únicamente.
     """)
 
 with tab3:
-    st.subheader("Tiempos Promedio por Paso")
+    st.subheader("Valores Acumulados Promedio por Paso")
     
     st.write("""
-    En este apartado se analiza el tiempo que los usuarios tardan en completar cada paso del proceso de navegación, 
+    En este apartado se analiza el tiempo acumulado registrado en cada paso del proceso de navegación,
     comparando los grupos Test (nueva versión de la web) y Control (versión antigua), y diferenciando entre usuarios lineales 
-    (que completan el proceso sin errores) y no lineales (que retroceden o repiten pasos).
+    (visitas que satisfacen la regla de secuencia) y no lineales (visitas que no la satisfacen).
     """)
 
     step_order = ['start', 'step_1', 'step_2', 'step_3', 'confirm']
@@ -359,7 +364,7 @@ with tab3:
         color='variation', 
         line_dash='lineal',  # Agregar la variable lineal/no lineal como patrón de línea
         markers=True, 
-        title="Tiempos Promedio por Paso (Test vs Control - Lineal/No Lineal)"
+        title="Valores Acumulados Promedio por Paso (Test vs Control - Lineal/No Lineal)"
     )
     
     st.plotly_chart(fig_time)
@@ -368,24 +373,24 @@ with tab3:
 
     st.write("""
     #### Insights
-    - **Usuarios no lineales**: Los usuarios no lineales en el grupo **Test** tardan más en completar los primeros pasos, lo que podría indicar problemas de usabilidad o confusión inicial con la nueva versión de la web. Este retraso sugiere la necesidad de una revisión en las primeras etapas del flujo para identificar puntos críticos que dificultan el avance de estos usuarios.
+    - **Visitas no lineales**: Los eventos de visitas no lineales de **Test** muestran valores medios de tiempo acumulado superiores en los primeros pasos. Los logs no permiten atribuir este patrón a usabilidad, confusión u otra causa.
     
-    - **Usuarios lineales**: Los usuarios lineales del grupo **Test** completan el proceso más rápido que los del grupo **Control**, lo que refuerza la idea de que, para aquellos que navegan sin errores, la nueva versión de la web ofrece una experiencia más eficiente y optimizada.
+    - **Visitas lineales**: Los eventos de visitas lineales del grupo **Test** muestran menores valores medios de tiempo acumulado que los del grupo **Control**. Es una diferencia descriptiva y no demuestra por sí sola una experiencia más eficiente.
     
-    - **Pasos intermedios**: Los tiempos en los pasos **Step 2** y **Step 3** son significativamente más largos para ambos grupos, lo que refleja una mayor complejidad en estas etapas. Este hallazgo sugiere que estos pasos podrían ser un área de mejora clave para optimizar el flujo general, ya que su complejidad está afectando tanto a los usuarios lineales como a los no lineales.
+    - **Pasos intermedios**: Los valores medios acumulados aumentan en **Step 2** y **Step 3** para ambos grupos. Esta métrica no permite atribuir el patrón a una mayor complejidad de la interfaz.
     
-    - **Paso Confirm**: La nueva versión de la web reduce los tiempos en el paso final (**Confirm**) para los usuarios no lineales, lo que podría indicar que, a medida que los usuarios avanzan en el proceso, se adaptan mejor a la nueva interfaz, o que las mejoras en este paso en particular son más efectivas para este grupo.
+    - **Paso Confirm**: El valor medio acumulado en **Confirm** es menor para las visitas no lineales de Test que para las de Control; no se evalúa la causa de esa diferencia.
     
-    - **Conclusión general**: Aunque la nueva versión de la web parece mejorar la eficiencia general para los usuarios lineales, los usuarios no lineales aún enfrentan desafíos importantes en las primeras etapas del proceso. Mejorar la accesibilidad y claridad en los pasos iniciales, especialmente para los no lineales, podría aumentar la tasa de finalización y reducir los tiempos totales.
+    - **Conclusión general**: Los patrones varían por paso y clasificación de la visita. No respaldan por sí solos una afirmación de mejora general de eficiencia o experiencia.
     """)
 
 with tab4:
     st.subheader("Tasas de Error")
     
     st.write("""
-    La tasa de errores mide cuántos usuarios experimentaron dificultades durante el proceso, ya sea por retroceder 
-    en los pasos o por repetirlos más de dos veces. Este análisis es esencial para identificar los puntos críticos 
-    donde los usuarios tienen problemas, tanto en la versión antigua de la web (grupo Control) como en la nueva (grupo Test).
+    La tasa histórica de error mide la proporción de eventos que cumplen una de dos reglas: un retroceso de un paso
+    (`step_diff == -1`) o más de dos apariciones del mismo paso dentro de una visita. No captura otras posibles
+    dificultades ni identifica sus causas.
     """)
 
     step_order = ['start', 'step_1', 'step_2', 'step_3', 'confirm']
@@ -419,28 +424,27 @@ with tab4:
 
     st.write("""
     #### Insights
-    - **Paso Start y usuarios no lineales**: La tasa de errores es considerablemente más alta en el paso **Start** para los usuarios **no lineales** en el grupo **Test** (34.62%) en comparación con el grupo **Control** (23.37%). Esto indica que la nueva versión de la web podría estar presentando barreras significativas para los usuarios al inicio del proceso, lo que podría estar afectando la capacidad de estos usuarios para avanzar de manera efectiva.
+    - **Paso Start y visitas no lineales**: La tasa histórica de error es mayor en **Test** (34.62%) que en **Control** (23.37%). Es una diferencia descriptiva; los logs no identifican barreras ni explican la causa.
     
-    - **Evolución de las tasas de error**: En los pasos siguientes, la tasa de errores disminuye tanto en el grupo **Test** como en el grupo **Control**. En el grupo **Test**, la tasa baja al **20.85%** en **Step 1** y continúa disminuyendo en **Step 2** (**21.29%**) y **Step 3** (**7.91%**). En el grupo **Control**, el patrón es similar, pero las tasas de error se mantienen más consistentes entre **Step 1** (**15.18%**) y **Step 2** (**22.89%**), lo que sugiere que, aunque la nueva versión tiene problemas al inicio, se comporta mejor en los últimos pasos.
+    - **Evolución de las tasas de error**: En Test, las tasas históricas son **20.85%** en **Step 1**, **21.29%** en **Step 2** y **7.91%** en **Step 3**. En Control son **15.18%**, **22.89%** y **10.38%**, respectivamente. Son comparaciones descriptivas de eventos clasificados como error.
     
-    - **Paso Confirm**: Curiosamente, la tasa de errores en el paso final **Confirm** es ligeramente superior en el grupo **Test** (**8.78%**) en comparación con el grupo **Control** (**7.68%**), lo que podría señalar alguna confusión residual en la nueva versión al completar el proceso.
+    - **Paso Confirm**: La tasa histórica de error es ligeramente superior en **Test** (**8.78%**) que en **Control** (**7.68%**). La métrica no permite atribuir la diferencia a confusión u otra causa.
     
-    - **Usuarios lineales**: No se detectaron errores en ningún paso para los usuarios **lineales** en ambos grupos, lo que confirma que, para aquellos que navegan de manera fluida y sin repeticiones, la experiencia es completamente libre de problemas en ambos casos. Esto sugiere que las dificultades están más concentradas en los usuarios que retroceden o repiten pasos, probablemente debido a falta de claridad o problemas de usabilidad.
+    - **Usuarios lineales**: No se detectan errores definidos por esta regla en las visitas lineales, un resultado esperado por la relación entre ambas definiciones. Esto no demuestra que la experiencia estuviera libre de otros problemas.
     
-    - **Conclusión general**: La **nueva versión de la web** presenta más dificultades en el paso **Start** para los usuarios no lineales, lo que podría estar causando una experiencia inicial negativa que impacta en el progreso posterior. Sin embargo, en los pasos intermedios y finales, las tasas de error disminuyen en el grupo **Test**, lo que sugiere que la nueva versión se vuelve más intuitiva a medida que los usuarios avanzan en el proceso. Se recomienda mejorar la experiencia inicial en el paso **Start** para minimizar los errores y evitar un impacto negativo en la percepción general.
+    - **Conclusión general**: La tasa de error definida por el proyecto es mayor en **Start** para las visitas no lineales de Test. Los logs no permiten concluir que la interfaz sea menos intuitiva ni identificar la causa.
     """)
 
 with tab5:
     st.subheader("Estadísticas de Tiempos: Media, Skewness y Kurtosis")
     
     st.write("""
-    Además del análisis de los tiempos promedio, es crucial analizar la forma de la distribución de los tiempos 
-    en cada paso para obtener una visión más detallada del comportamiento de los usuarios. 
-    Para ello, se calculan las siguientes métricas:
+    Además del valor medio, se describe la forma de la distribución histórica de `total_time_in_step`
+    en cada paso mediante las siguientes métricas:
     
-    - **Media**: El tiempo promedio que los usuarios dedican a cada paso.
-    - **Skewness (asimetría)**: Indica si los tiempos están sesgados hacia un lado de la media.
-    - **Kurtosis (curtosis)**: Mide la "cola" de la distribución, mostrando si hay valores extremos de tiempo.
+    - **Media**: El valor acumulado promedio registrado para los eventos del paso.
+    - **Skewness (asimetría)**: Describe la asimetría de los valores acumulados respecto a la media.
+    - **Kurtosis (curtosis)**: Describe el peso de las colas de la distribución y la presencia de valores extremos.
     """)
 
     st.divider()
@@ -458,8 +462,8 @@ with tab5:
     st.subheader("Visualización")
 
     fig_mean = px.bar(grouped_time_stats, x='step', y='mean', color='variation', 
-                      barmode='group', title='Media de Tiempos por Grupo y Paso',
-                      labels={'mean': 'Tiempo promedio (s)', 'step': 'Paso'})
+                      barmode='group', title='Media de Valores Acumulados por Grupo y Paso',
+                      labels={'mean': 'Valor acumulado promedio (s)', 'step': 'Paso'})
     st.plotly_chart(fig_mean)
 
     fig_skewness = px.bar(grouped_time_stats, x='step', y='skew', color='variation', 
@@ -478,18 +482,18 @@ with tab5:
     ### Insights
 
     1. **Media (mean)**:
-   - En general, los **usuarios no lineales** tienden a pasar **más tiempo** en todos los pasos del proceso, especialmente en los pasos intermedios y finales. Esto es particularmente evidente en el grupo **Test**, donde los usuarios no lineales pasan, por ejemplo, 194 segundos en el paso **step_3**, frente a 157 segundos para los lineales.
-   - Los **usuarios lineales del grupo Control** completan el proceso de manera más rápida en los primeros pasos (**start** y **step_1**), con una media de 12 y 37 segundos respectivamente, comparado con el grupo **Test** donde los tiempos son de 7 y 30 segundos en los mismos pasos. Esto sugiere que el grupo Test tiene un inicio algo más rápido, pero se ralentiza en los pasos posteriores.
-   - En el **paso confirm**, los usuarios lineales del grupo **Control** tienen un tiempo promedio superior (290 segundos) en comparación con el grupo **Test** (250 segundos), lo que sugiere que la nueva versión mejora la eficiencia en la fase final del proceso.
+   - En general, los eventos de **visitas no lineales** muestran valores medios acumulados superiores en todos los pasos, especialmente en los intermedios y finales. En **Test**, por ejemplo, la media es 194 segundos en **step_3**, frente a 157 segundos para las visitas lineales.
+   - En los primeros pasos (**start** y **step_1**), las visitas lineales de **Control** registran medias de 12 y 37 segundos, frente a 7 y 30 segundos en **Test**. Los patrones cambian en pasos posteriores y no respaldan una conclusión global sobre rapidez.
+   - En **confirm**, las visitas lineales de **Control** tienen un valor medio acumulado superior (290 segundos) al de **Test** (250 segundos). Es una diferencia descriptiva de esta métrica.
 
     2. **Skewness (asimetría)**:
-   - En ambos grupos, la **skewness** es extremadamente alta en los primeros pasos (**start** y **step_1**), especialmente para los **usuarios no lineales**, lo que sugiere que hay una **minoría significativa de usuarios** que tarda mucho más que el promedio en completar estos pasos. Esto es más notable en el grupo **Control** en el paso **start**, con un skew de 53 para usuarios no lineales.
-   - La asimetría disminuye a medida que los usuarios avanzan en los pasos. Sin embargo, persiste en el paso **confirm** para los usuarios no lineales, particularmente en el grupo **Test**, donde la asimetría es alta (9.27), lo que indica que aún hay usuarios que experimentan dificultades significativas en los pasos finales de la nueva versión de la web.
+   - En ambos grupos, la **skewness** es muy alta en los primeros pasos (**start** y **step_1**), especialmente para las **visitas no lineales**, lo que refleja distribuciones con una cola derecha pronunciada. En **Control**, el paso **start** tiene una skewness de 53 para esas visitas.
+   - La asimetría disminuye en pasos posteriores, aunque sigue siendo alta en **confirm** para las visitas no lineales de **Test** (9.27). La distribución no permite identificar dificultades ni sus causas.
 
     3. **Kurtosis**:
-   - Los valores extremadamente altos de **kurtosis** en los primeros pasos, especialmente para los **usuarios no lineales**, indican la presencia de **valores atípicos extremos**. Por ejemplo, el paso **start** en el grupo **Control** tiene una kurtosis de 5255 para los usuarios no lineales, lo que sugiere que una pequeña proporción de usuarios está experimentando tiempos muy prolongados en este paso.
-   - En el grupo **Test**, la **kurtosis** es más alta en los pasos **step_1** y **confirm**, con valores de 403 y 280 respectivamente, lo que indica que algunos usuarios enfrentan **dificultades graves** al completar estos pasos en la nueva versión.
-   - Los **usuarios lineales** en ambos grupos muestran una **kurtosis más baja** en comparación con los no lineales, lo que confirma que tienen una experiencia más consistente y sin grandes retrasos.
+   - Los valores extremadamente altos de **kurtosis** en los primeros pasos, especialmente para las **visitas no lineales**, reflejan colas pesadas y valores extremos. Por ejemplo, **start** en **Control** tiene una kurtosis de 5255 para esas visitas.
+   - En el grupo **Test**, la **kurtosis** es alta en **step_1** y **confirm**, con valores de 403 y 280 respectivamente, lo que refleja colas pesadas o valores extremos sin identificar su causa.
+   - Las **visitas lineales** de ambos grupos muestran una **kurtosis más baja** que las no lineales, una descripción de la forma de estas distribuciones que no demuestra una experiencia más consistente.
     """)
 
 with tab6:
@@ -498,8 +502,8 @@ with tab6:
     st.write("""
     En esta sección se analizan las correlaciones entre diferentes variables relacionadas con los clientes, 
     como **balance**, **edad**, **actividad** (suma de logins y llamadas a soporte), y **número de cuentas**. 
-    El objetivo es descubrir relaciones significativas que puedan influir en el comportamiento de los usuarios 
-    y su rendimiento en el proceso de navegación en la web.
+    El objetivo es describir asociaciones bivariadas en los datos. Estas correlaciones no establecen influencia,
+    capacidad predictiva ni causalidad.
     """)
 
     st.divider()
@@ -541,30 +545,28 @@ with tab6:
     ### Insights
 
     1. **Balance y Número de Cuentas**:
-   - La correlación entre **balance** y **número de cuentas** es moderadamente positiva tanto en Pearson (**0.26**) como en Spearman (**0.33**), lo que sugiere que los clientes con más cuentas tienden a tener balances más altos. La correlación más fuerte en Spearman indica que la relación podría no ser estrictamente lineal, pero sigue siendo significativa.
+   - La correlación entre **balance** y **número de cuentas** es positiva tanto en Pearson (**0.26**) como en Spearman (**0.33**). El análisis no incluye una prueba de significancia para estas correlaciones.
 
     2. **Balance y Edad**:
-   - Existe una correlación positiva entre **balance** y **edad**, especialmente en Spearman (**0.35**), lo que sugiere que los clientes mayores tienden a tener balances más altos. La mayor correlación en Spearman refleja que la relación entre estas variables es más sólida cuando se consideran rangos de edad en lugar de un cambio lineal estricto.
+   - **Balance** y **edad** muestran una correlación positiva, con un valor de Spearman de **0.35**. La diferencia respecto a Pearson describe los datos, pero no prueba que una relación sea más sólida.
 
     3. **Balance y Actividad**:
-   - La correlación entre **balance** y **actividad** es positiva pero baja, tanto en Pearson (**0.17**) como en Spearman (**0.29**). Esto indica que los clientes con balances más altos tienden a ser ligeramente más activos, pero la actividad no es un factor fuerte para predecir el balance.
+   - La correlación entre **balance** y **actividad** es positiva pero baja: Pearson **0.17** y Spearman **0.29**. No se evaluó capacidad predictiva.
 
     4. **Actividad y Número de Cuentas**:
-   - Existe una correlación moderada entre **actividad** y **número de cuentas**, con valores de Pearson (**0.24**) y Spearman (**0.24**). Esto sugiere que los clientes con más cuentas tienden a ser más activos, aunque no de manera contundente.
+   - **Actividad** y **número de cuentas** presentan valores de **0.24** tanto en Pearson como en Spearman, una asociación positiva de magnitud limitada.
 
     5. **Edad y Actividad**:
-   - La correlación entre **edad** y **actividad** es muy baja tanto en Pearson (**0.08**) como en Spearman (**0.08**), lo que indica que la **edad** no tiene un impacto significativo en el nivel de actividad de los clientes. Los clientes de todas las edades tienden a mostrar patrones similares en cuanto a su actividad en la web.
+   - La correlación entre **edad** y **actividad** es muy baja tanto en Pearson (**0.08**) como en Spearman (**0.08**). No se realizó una prueba que permita afirmar impacto o ausencia de impacto.
     """)
 
 with tab7:
     st.subheader("Pruebas Estadísticas")
 
     st.write("""
-    Para validar los resultados obtenidos y confirmar si las diferencias observadas entre los grupos 
-    **Test** (nueva versión de la web) y **Control** (versión antigua) son estadísticamente significativas, 
-    realizamos una serie de pruebas estadísticas. Estas pruebas nos permiten determinar si las diferencias 
-    observadas en las métricas clave (como tasas de finalización y tiempos por paso) son atribuibles a la nueva versión 
-    de la web o si son producto del azar.
+    El análisis histórico compara **Test** (nueva versión) y **Control** (versión anterior) mediante varias pruebas.
+    Sus valores p describen la compatibilidad de las métricas observadas —como secuencia lineal y valores acumulados—
+    con la hipótesis nula bajo los supuestos de cada prueba; no establecen importancia práctica ni causalidad.
     """)
 
     st.divider()
@@ -572,33 +574,33 @@ with tab7:
     st.write("""
     ### Tipos de Pruebas Realizadas:
     
-    - **Prueba Z**: Comparación de las tasas de finalización entre los grupos Test y Control.
-    - **T-test**: Comparación de los tiempos de finalización entre los usuarios de Test y Control, tanto para usuarios lineales como no lineales.
-    - **Prueba Mann-Whitney**: Evaluación de diferencias en los tiempos de finalización entre los grupos cuando los datos no siguen una distribución normal.
+    - **Prueba Z**: Comparación de las tasas de clientes con alguna visita lineal entre Test y Control.
+    - **T-test**: Comparación de los valores acumulados en `confirm` entre Test y Control, para filas lineales y no lineales.
+    - **Prueba Mann-Whitney**: Evaluación de diferencias en los valores acumulados de las filas de eventos.
     - **Prueba Chi-square**: Evaluación de la asociación entre las variables categóricas, como Test/Control y Lineal/No Lineal.
     - **Cramér's V**: Medición de la fuerza de la asociación entre variables categóricas.
     """)
 
     st.divider()
 
-    st.markdown("#### 1. Prueba Z para Tasas de Finalización")
+    st.markdown("#### 1. Prueba Z para Tasas de Secuencia Lineal")
     stat, p_value = z_test_completion_rates(df_vanguard)
     st.write(f"**Estadístico Z**: {stat:.3f}")
     st.write(f"**Valor p**: {p_value:.5f}")
     
     if p_value < 0.05:
-        st.write("La diferencia en las tasas de finalización entre Test y Control es **estadísticamente significativa**.")
+        st.write("La diferencia en las tasas de clientes con alguna visita lineal es **estadísticamente significativa** bajo esta prueba.")
     else:
-        st.write("La diferencia en las tasas de finalización **no es estadísticamente significativa**.")
+        st.write("La diferencia en las tasas de clientes con alguna visita lineal **no es estadísticamente significativa** bajo esta prueba.")
 
     st.markdown("""
     ##### Insight
-    - El estadístico Z muestra una diferencia significativa en las tasas de finalización, con un valor p de **0.0015**, lo que indica que la nueva versión de la web ha afectado significativamente el comportamiento de finalización de los usuarios.
+    - El estadístico Z muestra una diferencia significativa en la proporción histórica de clientes con alguna visita lineal (valor p **0.0015**). Esto indica asociación, no prueba por sí solo una mejora de experiencia.
     """)
 
     st.divider()
 
-    st.markdown("#### 2. T-test para Tiempos de Finalización")
+    st.markdown("#### 2. T-test para Valores Acumulados en Confirm")
     step = 'confirm'
     (t_stat_lineal, p_value_lineal), (t_stat_non_lineal, p_value_non_lineal) = t_test_time_per_step(df_vanguard, step)
 
@@ -606,27 +608,27 @@ with tab7:
     st.write(f"**Estadístico t**: {t_stat_lineal:.2f}")
     st.write(f"**Valor p**: {p_value_lineal:.2e}")
     if p_value_lineal < 0.05:
-        st.write("La diferencia en los tiempos de finalización para usuarios lineales es **estadísticamente significativa**.")
+        st.write("La diferencia en los valores acumulados de `confirm` para filas lineales es **estadísticamente significativa** bajo esta prueba.")
     else:
-        st.write("La diferencia en los tiempos de finalización para usuarios lineales **no es estadísticamente significativa**.")
+        st.write("La diferencia en los valores acumulados de `confirm` para filas lineales **no es estadísticamente significativa** bajo esta prueba.")
     
     st.write("**Resultados para usuarios no lineales:**")
     st.write(f"**Estadístico t**: {t_stat_non_lineal:.2f}")
     st.write(f"**Valor p**: {p_value_non_lineal:.2e}")
     if p_value_non_lineal < 0.05:
-        st.write("La diferencia en los tiempos de finalización para usuarios no lineales es **estadísticamente significativa**.")
+        st.write("La diferencia en los valores acumulados de `confirm` para filas no lineales es **estadísticamente significativa** bajo esta prueba.")
     else:
-        st.write("La diferencia en los tiempos de finalización para usuarios no lineales **no es estadísticamente significativa**.")
+        st.write("La diferencia en los valores acumulados de `confirm` para filas no lineales **no es estadísticamente significativa** bajo esta prueba.")
 
     st.markdown("""
     ##### Insight
-    - Para los usuarios **lineales**, el valor p es extremadamente bajo (**2.18e-40**), lo que indica una diferencia estadísticamente significativa entre Test y Control.
-    - Para los usuarios **no lineales**, el valor p también es muy bajo (**8.11e-21**), lo que sugiere que la nueva versión de la web impacta notablemente el comportamiento de estos usuarios.
+    - Para las filas **lineales**, el valor p es muy bajo (**2.18e-40**) bajo esta prueba histórica.
+    - Para las filas **no lineales**, el valor p también es muy bajo (**8.11e-21**). Estas observaciones se repiten dentro de visitas y clientes, por lo que la independencia es limitada.
     """)
 
     st.divider()
 
-    st.markdown("#### 3. Prueba Mann-Whitney U para Tiempos de Finalización")
+    st.markdown("#### 3. Prueba Mann-Whitney U para Valores Acumulados por Evento")
     u_statistic_variation, p_value_variation = mann_whitney_test_variation(df_vanguard)
     st.write(f"**U-statistic (Test vs Control)**: {u_statistic_variation:,.0f}")
     st.write(f"**P-value (Test vs Control)**: {p_value_variation:.2e}")
@@ -647,8 +649,8 @@ with tab7:
 
     st.markdown("""
     ##### Insight
-    - La prueba Mann-Whitney U muestra que la diferencia en los tiempos de finalización entre Test y Control es **estadísticamente significativa** (valor p de **1.59e-08**).
-    - La diferencia entre usuarios **lineales** y **no lineales** es altamente significativa, con un valor p de **7.29e-277**, lo que destaca una marcada diferencia en su comportamiento.
+    - La prueba Mann-Whitney U muestra una diferencia en los valores acumulados por evento entre Test y Control (valor p **1.59e-08**) bajo sus supuestos.
+    - La comparación entre filas **lineales** y **no lineales** también produce un valor p muy bajo (**7.29e-277**). Las filas se repiten dentro de visitas y clientes, por lo que la independencia es limitada.
     """)
 
     st.divider()

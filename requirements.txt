@@ -6,4 +6,3 @@ scipy>=1.7
 statsmodels>=0.12
 streamlit>=1.25
 plotly>=5.0
-setuptools>=58.0
